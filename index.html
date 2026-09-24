@@ -48,7 +48,7 @@ h1{font-size:19px;font-weight:600;color:var(--navy);margin:0 0 4px;line-height:1
 .tip table{border-collapse:collapse;margin-top:4px}
 .tip td{padding:1px 8px 1px 0;color:var(--ink2)}
 .tip td:last-child{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;padding-right:0}
-.county-label{font-size:11px;fill:var(--ink2);letter-spacing:.02em;pointer-events:none}
+.county-label{font-size:11px;font-weight:600;fill:var(--ink);letter-spacing:.04em;pointer-events:none;paint-order:stroke;stroke:var(--land);stroke-width:3.5px;stroke-linejoin:round;opacity:.9}
 .city-label{font-size:8.5px;fill:var(--ink);pointer-events:none;paint-order:stroke;stroke:var(--land);stroke-width:2.5px;stroke-linejoin:round}
 .city{stroke:#FFFFFF;stroke-width:0.9;stroke-linejoin:round;cursor:pointer}
 .city.dim{opacity:.18}
@@ -63,6 +63,7 @@ h1{font-size:19px;font-weight:600;color:var(--navy);margin:0 0 4px;line-height:1
 .hint{position:absolute;left:12px;bottom:12px;font-size:11px;color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 7px;opacity:.9;pointer-events:none}
 .mapcol svg{cursor:grab;touch-action:none}
 .mapcol svg.dragging{cursor:grabbing}
+.seg.segf{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--panel);z-index:4;min-width:270px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .src{font-size:11px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px}
 @media (max-width:860px){ .wrap{grid-template-columns:1fr} .panel{max-height:none;border-left:0;border-top:1px solid var(--line)} .mapcol svg{max-height:none} }
 @media (prefers-reduced-motion: reduce){ .dot{transition:none} }
@@ -78,6 +79,7 @@ h1{font-size:19px;font-weight:600;color:var(--navy);margin:0 0 4px;line-height:1
       <button id="zout" aria-label="Zoom out">&minus;</button>
       <button id="zreset" aria-label="Reset view">Reset</button>
     </div>
+    <div class="seg segf" role="group" aria-label="Score to display"><button data-m="combined" aria-pressed="true">Combined</button><button data-m="down" aria-pressed="false">Downturn</button><button data-m="up" aria-pressed="false">Upswing</button></div>
     <div class="hint" id="hint">Scroll or pinch to zoom, drag to pan</div>
   </div>
   <aside class="panel">
@@ -124,16 +126,16 @@ const NS='http://www.w3.org/2000/svg';
 function el(n,a){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e}
 // counties
 const root=el('g',{}); svg.appendChild(root);
-const gC=el('g',{}); root.appendChild(gC);
+const gC=el('g',{}); root.appendChild(gC); const gT=el('g',{});
 const LBL={'Sonoma':[-122.95,38.53],'Napa':[-122.33,38.55],'Solano':[-121.93,38.27],'Marin':[-122.68,38.12],'Contra Costa':[-121.87,37.99],'Alameda':[-121.83,37.60],'San Francisco':[-122.62,37.74],'San Mateo':[-122.38,37.44],'Santa Clara':[-121.72,37.22]};
 for(const [name,rings] of Object.entries(DATA.counties)){
   const d=rings.map(r=>r.map((p,i)=>(i?'L':'M')+px(p[0],p[1]).map(v=>v.toFixed(1)).join(' ')).join('')+'Z').join('');
   gC.appendChild(el('path',{d,fill:'var(--land)',stroke:'var(--border)','stroke-width':0.8,'stroke-linejoin':'round',class:'county'}));
 }
-for(const [name,ll] of Object.entries(LBL)){const [x,y]=px(ll[0],ll[1]);const t=el('text',{x,y,class:'county-label','text-anchor':'middle'});t.textContent=name.toUpperCase();gC.appendChild(t)}
+for(const [name,ll] of Object.entries(LBL)){const [x,y]=px(ll[0],ll[1]);const t=el('text',{x,y,class:'county-label','text-anchor':'middle'});t.textContent=name.toUpperCase();gT.appendChild(t)}
 // cities
 const gP=el('g',{}); root.appendChild(gP);
-const gD=el('g',{style:'display:none'}), gL=el('g',{style:'display:none'}); root.appendChild(gD); root.appendChild(gL);
+const gD=el('g',{style:'display:none'}), gL=el('g',{style:'display:none'}); root.appendChild(gD); root.appendChild(gL); root.appendChild(gT);
 const polys={};
 const dots={};
 DATA.cities.forEach(c=>{const [x,y]=px(c.lon,c.lat); c.x=x;c.y=y;
@@ -180,7 +182,7 @@ function applyView(){ root.setAttribute('transform',`translate(${view.tx} ${view
   gL.querySelectorAll('text').forEach(t=>{t.style.fontSize=(8.5/Math.sqrt(k))+'px'; t.style.strokeWidth=(2.5/k)+'px'; const c=DATA.cities.find(z=>z.city===t.textContent); if(c){t.setAttribute('x',c.x+7/k); t.setAttribute('y',c.y+3/k)}});
   gC.querySelectorAll('.county').forEach(p=>p.style.strokeWidth=(0.8/k)+'px');
   gP.querySelectorAll('.city').forEach(p=>p.style.strokeWidth=((p.classList.contains('active')||p.classList.contains('hot')?1.8:0.9)/k)+'px');
-  gC.querySelectorAll('.county-label').forEach(t=>t.style.fontSize=(11/Math.sqrt(k))+'px');
+  gT.querySelectorAll('.county-label').forEach(t=>t.style.fontSize=(11/Math.sqrt(k))+'px');
   document.getElementById('zreset').style.visibility=view.k>1?'visible':'hidden';
   if(active){ const c=DATA.cities.find(z=>z.city===active); const b=polys[active].getBoundingClientRect(); showTip(c,{clientX:b.left+b.width/2,clientY:b.top+b.height/2}); } }
 function svgPoint(cx,cy){ const pt=svg.createSVGPoint(); pt.x=cx; pt.y=cy; const m=svg.getScreenCTM().inverse(); const p=pt.matrixTransform(m); return [p.x,p.y]; }
